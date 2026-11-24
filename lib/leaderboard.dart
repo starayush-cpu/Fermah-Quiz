@@ -158,7 +158,19 @@ class _LeaderboardSectionState extends State<LeaderboardSection> {
                 ),
               ),
             if (_loading)
-              const Text('Loading the leaderboard.')
+              // The text is Expanded so it wraps inside the Row instead
+              // of taking its full intrinsic width and overflowing.
+              const Row(
+                children: [
+                  SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 3),
+                  ),
+                  SizedBox(width: 12),
+                  Expanded(child: Text('Loading the leaderboard.')),
+                ],
+              )
             else if (_entries.isEmpty)
               Text(
                 _configured

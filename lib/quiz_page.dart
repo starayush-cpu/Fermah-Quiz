@@ -3,7 +3,9 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'confetti.dart';
 import 'data.dart';
+import 'rolling_number.dart';
 import 'theme.dart';
 
 /// Quiz player: 20 seconds per question, 100 points plus a time bonus of
@@ -150,20 +152,31 @@ class _QuizPlayerState extends State<QuizPlayer> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            Text(
+              widget.quiz.title,
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 10),
+            // Chips reflow onto a second line on narrow screens instead of
+            // clipping, which the old single-line header did at 390px.
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
               children: [
-                Expanded(
-                  child: Text(
-                    widget.quiz.title,
-                    style: const TextStyle(
-                        fontSize: 20, fontWeight: FontWeight.w800),
+                _infoChip(
+                  'Question ${_index + 1} of ${widget.quiz.questions.length}',
+                  AppColors.navy,
+                  const Color(0xFFE2EBF0),
+                ),
+                _infoChip('Score $_score', AppColors.tealDark,
+                    const Color(0xFFE7F4F4)),
+                if (_streak >= 2)
+                  _infoChip(
+                    'Streak $_streak',
+                    AppColors.purpleDark,
+                    const Color(0xFFF0E6F7),
+                    icon: Icons.whatshot,
                   ),
-                ),
-                Text(
-                  'Question ${_index + 1} of ${widget.quiz.questions.length}  |  Score $_score',
-                  style: const TextStyle(fontWeight: FontWeight.w600),
-                ),
               ],
             ),
             const SizedBox(height: 16),
@@ -188,7 +201,12 @@ class _QuizPlayerState extends State<QuizPlayer> {
                   child: Text(
                     '${_timeLeft}s',
                     textAlign: TextAlign.right,
-                    style: const TextStyle(fontWeight: FontWeight.w800),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontFeatures: <FontFeature>[
+                        FontFeature.tabularFigures()
+                      ],
+                    ),
                   ),
                 ),
               ],
@@ -293,18 +311,12 @@ class _QuizPlayerState extends State<QuizPlayer> {
               ),
             ],
             const SizedBox(height: 18),
+            // The score and streak now live in the chips above, so the
+            // bottom row is only the actions.
             Wrap(
               spacing: 10,
               runSpacing: 10,
               children: [
-                Text(
-                  'Streak: $_streak  |  Quiz score: $_score',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 14,
-                    color: AppColors.purpleDark,
-                  ),
-                ),
                 if (_answered)
                   ElevatedButton(
                     onPressed: _next,
@@ -340,7 +352,8 @@ class _QuizPlayerState extends State<QuizPlayer> {
   }
 
   Widget _resultsCard(BuildContext context) {
-    return Card(
+    final bool celebrate = _score > 0 && !reduceMotion(context);
+    final Widget card = Card(
       elevation: 0,
       color: Colors.white,
       shape: RoundedRectangleBorder(
@@ -356,8 +369,9 @@ class _QuizPlayerState extends State<QuizPlayer> {
               style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
             ),
             const SizedBox(height: 8),
-            Text(
-              '$_score pts',
+            RollingNumber(
+              value: _score,
+              suffix: ' pts',
               style: const TextStyle(
                 fontSize: 44,
                 fontWeight: FontWeight.w800,
@@ -413,6 +427,42 @@ class _QuizPlayerState extends State<QuizPlayer> {
             ),
           ],
         ),
+      ),
+    );
+    if (!celebrate) return card;
+    return Stack(
+      children: [
+        card,
+        const Positioned.fill(child: ConfettiBurst()),
+      ],
+    );
+  }
+
+  /// A small pill for the quiz header: question number, score, streak.
+  Widget _infoChip(String label, Color fg, Color bg, {IconData? icon}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (icon != null) ...[
+            Icon(icon, size: 15, color: fg, semanticLabel: 'Streak'),
+            const SizedBox(width: 4),
+          ],
+          Text(
+            label,
+            style: TextStyle(
+              color: fg,
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              fontFeatures: const <FontFeature>[FontFeature.tabularFigures()],
+            ),
+          ),
+        ],
       ),
     );
   }

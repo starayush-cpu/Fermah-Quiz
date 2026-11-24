@@ -403,6 +403,16 @@ class _ZkScrambleGameState extends State<ZkScrambleGame> {
     }
   }
 
+  void _skip() {
+    setState(() {
+      _idx += 1;
+      _controller.clear();
+      if (_idx < _order.length) {
+        _scrambled = _scramble(_order[_idx].word);
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_idx >= _order.length) {
@@ -469,27 +479,52 @@ class _ZkScrambleGameState extends State<ZkScrambleGame> {
               ),
             ),
             const SizedBox(width: 10),
-            ElevatedButton(
-              onPressed: _check,
-              style: AppButtons.navy,
-              child: const Text('Check'),
-            ),
-            const SizedBox(width: 10),
-            OutlinedButton(
-              onPressed: () {
-                setState(() {
-                  _idx += 1;
-                  _controller.clear();
-                  if (_idx < _order.length) {
-                    _scrambled = _scramble(_order[_idx].word);
-                  }
-                });
-              },
-              style: AppButtons.outline,
-              child: const Text('Skip'),
-            ),
+            // On a narrow phone the three controls do not fit on one
+            // line, so the buttons drop below the field instead of
+            // overflowing off the right edge.
+            if (MediaQuery.sizeOf(context).width < 560)
+              const SizedBox.shrink()
+            else
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  ElevatedButton(
+                    onPressed: _check,
+                    style: AppButtons.navy,
+                    child: const Text('Check'),
+                  ),
+                  const SizedBox(width: 10),
+                  OutlinedButton(
+                    onPressed: _skip,
+                    style: AppButtons.outline,
+                    child: const Text('Skip'),
+                  ),
+                ],
+              ),
           ],
         ),
+        if (MediaQuery.sizeOf(context).width < 560) ...[
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: _check,
+                  style: AppButtons.navy,
+                  child: const Text('Check'),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: _skip,
+                  style: AppButtons.outline,
+                  child: const Text('Skip'),
+                ),
+              ),
+            ],
+          ),
+        ],
         const SizedBox(height: 14),
         Text(_msg, style: const TextStyle(fontWeight: FontWeight.w700)),
       ],
@@ -595,62 +630,69 @@ class _FermahSaysGameState extends State<FermahSaysGame> {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
+        Wrap(
+          alignment: WrapAlignment.center,
+          spacing: 16,
+          runSpacing: 4,
           children: [
             Text('Round: $_round',
                 style: const TextStyle(fontWeight: FontWeight.w700)),
-            const SizedBox(width: 16),
             Text('Status: $_status',
                 style: const TextStyle(fontWeight: FontWeight.w700)),
           ],
         ),
         const SizedBox(height: 16),
-        SizedBox(
-          width: 420,
-          child: GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              crossAxisSpacing: 12,
-              mainAxisSpacing: 12,
-            ),
-            itemCount: 4,
-            itemBuilder: (BuildContext context, int i) {
-              return SizedBox(
-                height: 120,
-                child: ElevatedButton(
-                  onPressed: () => _tap(i),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: _colors[i],
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
+        // The pads are 420 wide at most, but on a narrow phone they
+        // shrink to fit instead of overflowing off the right edge.
+        Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 420),
+            child: GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                crossAxisSpacing: 12,
+                mainAxisSpacing: 12,
+              ),
+              itemCount: 4,
+              itemBuilder: (BuildContext context, int i) {
+                return SizedBox(
+                  height: 120,
+                  child: ElevatedButton(
+                    onPressed: () => _tap(i),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _colors[i],
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ).copyWith(
+                      backgroundColor: WidgetStateProperty.resolveWith<Color>(
+                        (Set<WidgetState> states) {
+                          if (_lit == i) return _colors[i];
+                          return _colors[i].withValues(alpha: 0.85);
+                        },
+                      ),
                     ),
-                  ).copyWith(
-                    backgroundColor: WidgetStateProperty.resolveWith<Color>(
-                      (Set<WidgetState> states) {
-                        if (_lit == i) return _colors[i];
-                        return _colors[i].withValues(alpha: 0.85);
-                      },
-                    ),
-                  ),
-                  child: AnimatedScale(
-                    scale: _lit == i ? 1.04 : 1.0,
-                    duration: const Duration(milliseconds: 150),
-                    child: Text(
-                      _labels[i],
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w800,
-                        fontSize: 16,
+                    child: AnimatedScale(
+                      scale: _lit == i ? 1.04 : 1.0,
+                      duration: reduceMotion(context)
+                          ? Duration.zero
+                          : const Duration(milliseconds: 150),
+                      child: Text(
+                        _labels[i],
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 16,
+                        ),
                       ),
                     ),
                   ),
-                ),
-              );
-            },
+                );
+              },
+            ),
           ),
         ),
         const SizedBox(height: 16),

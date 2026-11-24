@@ -6,6 +6,7 @@ import 'finn.dart';
 import 'games.dart';
 import 'leaderboard.dart';
 import 'quiz_page.dart';
+import 'rolling_number.dart';
 import 'share_card.dart';
 import 'theme.dart';
 import 'web_helpers.dart';
@@ -45,6 +46,11 @@ class _HomePageState extends State<HomePage> {
   final GlobalKey _leaderboardKey = GlobalKey();
   final GlobalKey _shareKey = GlobalKey();
   final GlobalKey _learnKey = GlobalKey();
+  // The quiz and game players render below their card grids, so scrolling
+  // to the section top leaves the player out of view. These keys let the
+  // open actions scroll straight to the player itself instead.
+  final GlobalKey _quizPlayerKey = GlobalKey();
+  final GlobalKey _gamePlayerKey = GlobalKey();
 
   @override
   void initState() {
@@ -78,7 +84,9 @@ class _HomePageState extends State<HomePage> {
     if (ctx != null) {
       Scrollable.ensureVisible(
         ctx,
-        duration: const Duration(milliseconds: 400),
+        duration: reduceMotion(context)
+            ? Duration.zero
+            : const Duration(milliseconds: 400),
         alignment: 0,
       );
     }
@@ -89,7 +97,11 @@ class _HomePageState extends State<HomePage> {
       _activeQuiz = quiz;
       _activeGame = null;
     });
-    _scrollTo(_quizzesKey);
+    // The player builds below the grid in the same frame; scroll to it
+    // once it exists so the user lands on the first question, not the grid.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _scrollTo(_quizPlayerKey);
+    });
   }
 
   void _openGame(String id) {
@@ -97,7 +109,9 @@ class _HomePageState extends State<HomePage> {
       _activeGame = id;
       _activeQuiz = null;
     });
-    _scrollTo(_gamesKey);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _scrollTo(_gamePlayerKey);
+    });
   }
 
   /// A responsive grid of equal-height cards built with Wrap, not GridView.
@@ -127,16 +141,11 @@ class _HomePageState extends State<HomePage> {
     final int best = _bestScores[quiz.id] ?? 0;
     // Tapping anywhere on the card starts the quiz. The card itself is
     // the tap target: in headless Chrome the inner button alone did not
-    // reliably receive taps, while the card-level tap always does.
-    return GestureDetector(
+    // reliably receive taps, while the card-level tap always does. The
+    // visible Start button is still a real button, with semantics and
+    // keyboard focus, so the card is not a div with an onClick.
+    return _HoverCard(
       onTap: () => _startQuiz(quiz),
-      child: Card(
-      elevation: 0,
-      color: Colors.white,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: const BorderSide(color: AppColors.line),
-      ),
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
@@ -168,42 +177,21 @@ class _HomePageState extends State<HomePage> {
             const SizedBox(height: 6),
             SizedBox(
               width: double.infinity,
-              child: GestureDetector(
-                onTap: () => _startQuiz(quiz),
-                child: Container(
-                  height: 48,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: AppColors.navy,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Text(
-                    'Start quiz',
-                    style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 16),
-                  ),
-                ),
+              child: ElevatedButton(
+                onPressed: () => _startQuiz(quiz),
+                style: AppButtons.navy,
+                child: const Text('Start quiz'),
               ),
             ),
           ],
         ),
       ),
-    ),
     );
   }
 
   Widget _gameCard(String id, String title, String desc) {
-    return GestureDetector(
+    return _HoverCard(
       onTap: () => _openGame(id),
-      child: Card(
-      elevation: 0,
-      color: Colors.white,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: const BorderSide(color: AppColors.line),
-      ),
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
@@ -221,29 +209,15 @@ class _HomePageState extends State<HomePage> {
             ),
             SizedBox(
               width: double.infinity,
-              child: GestureDetector(
-                onTap: () => _openGame(id),
-                child: Container(
-                  height: 48,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: AppColors.navy,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Text(
-                    'Play',
-                    style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 16),
-                  ),
-                ),
+              child: ElevatedButton(
+                onPressed: () => _openGame(id),
+                style: AppButtons.navy,
+                child: const Text('Play'),
               ),
             ),
           ],
         ),
       ),
-    ),
     );
   }
 
@@ -260,17 +234,62 @@ class _HomePageState extends State<HomePage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(card.title,
-                style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.navy)),
-            const SizedBox(height: 4),
+            Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE7F4F4),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  alignment: Alignment.center,
+                  child: Icon(
+                    _learnIcon(card.title),
+                    color: AppColors.tealDark,
+                    size: 22,
+                    semanticLabel: card.title,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(card.title,
+                      style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.navy)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
             Text(card.text, style: const TextStyle(color: AppColors.muted)),
           ],
         ),
       ),
     );
+  }
+
+  /// One drawn icon per Learn card, in a single consistent style. The
+  /// mapping lives here so the card data stays untouched.
+  IconData _learnIcon(String title) {
+    switch (title) {
+      case 'Seekers':
+        return Icons.search;
+      case 'Matchmaker':
+        return Icons.swap_horiz;
+      case 'Operators':
+        return Icons.memory;
+      case 'Kernel':
+        return Icons.settings;
+      case 'ULTRAMINT':
+        return Icons.token;
+      case 'Froben':
+        return Icons.storefront;
+      case 'Fermah Pay':
+        return Icons.payments;
+      default:
+        return Icons.lightbulb;
+    }
   }
 
   Widget _sectionHead({
@@ -309,10 +328,12 @@ class _HomePageState extends State<HomePage> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.emoji_events, size: 20, color: Colors.white),
+          const Icon(Icons.emoji_events,
+              size: 20, color: Colors.white, semanticLabel: 'Trophy'),
           const SizedBox(width: 6),
-          Text(
-            '$_totalScore pts',
+          RollingNumber(
+            value: _totalScore,
+            suffix: ' pts',
             style: const TextStyle(
               fontWeight: FontWeight.w700,
               color: Colors.white,
@@ -369,8 +390,7 @@ class _HomePageState extends State<HomePage> {
                   if (wide)
                     const Text(
                       'Quizzes and games for the Fermafia',
-                      style:
-                          TextStyle(fontSize: 12, color: Color(0xFF9FD8D8)),
+                      style: TextStyle(fontSize: 12, color: Color(0xFF9FD8D8)),
                     ),
                 ],
               ),
@@ -410,9 +430,9 @@ class _HomePageState extends State<HomePage> {
               ),
             ),
             _footer(),
-            ],
-          ),
+          ],
         ),
+      ),
     );
   }
 
@@ -481,6 +501,11 @@ class _HomePageState extends State<HomePage> {
           ],
         ),
         const SizedBox(height: 28),
+        Container(
+          height: 1,
+          color: Colors.white.withValues(alpha: 0.16),
+        ),
+        const SizedBox(height: 16),
         const Wrap(
           spacing: 24,
           runSpacing: 12,
@@ -493,16 +518,24 @@ class _HomePageState extends State<HomePage> {
         ),
       ],
     );
-    final Widget mascot = const Column(
-      children: [
-        Finn(width: 320, height: 248),
-        SizedBox(height: 4),
-        Text(
-          'Meet Finn, your quiz host. Say gFermah and play on.',
-          textAlign: TextAlign.center,
-          style: TextStyle(color: Color(0xFF9FB6C2), fontSize: 14),
-        ),
-      ],
+    final Widget mascot = Container(
+      padding: const EdgeInsets.fromLTRB(16, 20, 16, 16),
+      decoration: BoxDecoration(
+        color: AppColors.navy2,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
+      ),
+      child: const Column(
+        children: [
+          Finn(width: 320, height: 248),
+          SizedBox(height: 4),
+          Text(
+            'Meet Finn, your quiz host. Say gFermah and play on.',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Color(0xFF9FB6C2), fontSize: 14),
+          ),
+        ],
+      ),
     );
     return Container(
       color: AppColors.navy,
@@ -545,6 +578,9 @@ class _HomePageState extends State<HomePage> {
               .map(
                 (link) => TextButton(
                   onPressed: () => _scrollTo(link.$2),
+                  style: TextButton.styleFrom(
+                    minimumSize: const Size(0, 48),
+                  ),
                   child: Text(
                     link.$1,
                     style: const TextStyle(
@@ -580,13 +616,16 @@ class _HomePageState extends State<HomePage> {
         ),
         if (_activeQuiz != null) ...[
           const SizedBox(height: 16),
-          QuizPlayer(
-            key: ValueKey<String>(_activeQuiz!.id),
-            quiz: _activeQuiz!,
-            totalScore: _totalScore,
-            onAddPoints: _addPoints,
-            onGoToLeaderboard: () => _scrollTo(_leaderboardKey),
-            onGoToShare: () => _scrollTo(_shareKey),
+          KeyedSubtree(
+            key: _quizPlayerKey,
+            child: QuizPlayer(
+              key: ValueKey<String>(_activeQuiz!.id),
+              quiz: _activeQuiz!,
+              totalScore: _totalScore,
+              onAddPoints: _addPoints,
+              onGoToLeaderboard: () => _scrollTo(_leaderboardKey),
+              onGoToShare: () => _scrollTo(_shareKey),
+            ),
           ),
         ],
       ],
@@ -635,42 +674,47 @@ class _HomePageState extends State<HomePage> {
         ),
         if (_activeGame != null) ...[
           const SizedBox(height: 16),
-          Card(
-            elevation: 0,
-            color: Colors.white,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-              side: const BorderSide(color: AppColors.line),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        games.firstWhere((g) => g.$1 == _activeGame!).$2,
-                        style: const TextStyle(
-                            fontSize: 20, fontWeight: FontWeight.w800),
-                      ),
-                      TextButton(
-                        onPressed: () => setState(() => _activeGame = null),
-                        child: const Text('Close game'),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  if (_activeGame == 'pairs')
-                    ProofPairsGame(onAddPoints: _addPoints)
-                  else if (_activeGame == 'rush')
-                    ProofRushGame(onAddPoints: _addPoints)
-                  else if (_activeGame == 'scramble')
-                    ZkScrambleGame(onAddPoints: _addPoints)
-                  else
-                    FermahSaysGame(onAddPoints: _addPoints),
-                ],
+          KeyedSubtree(
+            key: _gamePlayerKey,
+            child: Card(
+              elevation: 0,
+              color: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+                side: const BorderSide(color: AppColors.line),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            games.firstWhere((g) => g.$1 == _activeGame!).$2,
+                            style: const TextStyle(
+                                fontSize: 20, fontWeight: FontWeight.w800),
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: () => setState(() => _activeGame = null),
+                          child: const Text('Close game'),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    if (_activeGame == 'pairs')
+                      ProofPairsGame(onAddPoints: _addPoints)
+                    else if (_activeGame == 'rush')
+                      ProofRushGame(onAddPoints: _addPoints)
+                    else if (_activeGame == 'scramble')
+                      ZkScrambleGame(onAddPoints: _addPoints)
+                    else
+                      FermahSaysGame(onAddPoints: _addPoints),
+                  ],
+                ),
               ),
             ),
           ),
@@ -834,6 +878,7 @@ class _HeroStat extends StatelessWidget {
             color: Colors.white,
             fontSize: 28,
             fontWeight: FontWeight.w800,
+            fontFeatures: <FontFeature>[FontFeature.tabularFigures()],
           ),
         ),
         Text(
@@ -841,6 +886,62 @@ class _HeroStat extends StatelessWidget {
           style: const TextStyle(color: Color(0xFF9FB6C2), fontSize: 13),
         ),
       ],
+    );
+  }
+}
+
+/// A card that lifts slightly on hover (transform only) and gives a real
+/// tap target with a ripple and keyboard focus. One animated piece per
+/// card, nothing more.
+class _HoverCard extends StatefulWidget {
+  const _HoverCard({required this.child, required this.onTap});
+
+  final Widget child;
+  final VoidCallback onTap;
+
+  @override
+  State<_HoverCard> createState() => _HoverCardState();
+}
+
+class _HoverCardState extends State<_HoverCard> {
+  bool _hover = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hover = true),
+      onExit: (_) => setState(() => _hover = false),
+      child: AnimatedContainer(
+        duration: reduceMotion(context)
+            ? Duration.zero
+            : const Duration(milliseconds: 180),
+        transform: Matrix4.translationValues(0, _hover ? -2 : 0, 0),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: _hover ? AppColors.teal : AppColors.line,
+            width: _hover ? 2 : 1,
+          ),
+          boxShadow: _hover
+              ? <BoxShadow>[
+                  BoxShadow(
+                    color: AppColors.navy.withValues(alpha: 0.10),
+                    blurRadius: 16,
+                    offset: const Offset(0, 6),
+                  ),
+                ]
+              : null,
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: widget.onTap,
+            borderRadius: BorderRadius.circular(16),
+            child: widget.child,
+          ),
+        ),
+      ),
     );
   }
 }

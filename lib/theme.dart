@@ -5,7 +5,8 @@ class AppColors {
   static const Color navy = Color(0xFF051624);
   static const Color navy2 = Color(0xFF0A2A3F);
   static const Color teal = Color(0xFF0FA3A3);
-  static const Color tealDark = Color(0xFF0B7E7E);
+  // Dark enough for teal text on the pale teal pill to clear 4.5:1.
+  static const Color tealDark = Color(0xFF0A6E6E);
   static const Color purple = Color(0xFF9553BE);
   static const Color purpleDark = Color(0xFF7A3FA3);
   static const Color sky = Color(0xFF4AA8D8);
@@ -17,7 +18,8 @@ class AppColors {
   static const Color goodBg = Color(0xFFDDF3E5);
   static const Color bad = Color(0xFFB3261E);
   static const Color badBg = Color(0xFFFBE3E1);
-  static const Color gold = Color(0xFFB7791F);
+  // Dark enough for white text on it to clear 4.5:1 (the old gold did not).
+  static const Color gold = Color(0xFF8A6100);
   static const Color noteBg = Color(0xFFFFF4D6);
   static const Color noteBorder = Color(0xFFE8C86A);
   static const Color noteText = Color(0xFF6B4E00);
@@ -71,6 +73,10 @@ ThemeData appTheme() {
       secondary: AppColors.purple,
     ),
     scaffoldBackgroundColor: AppColors.bg,
+    // Visible keyboard focus and hover states (Vercel guidelines: never
+    // remove the focus outline without a replacement).
+    focusColor: AppColors.teal.withValues(alpha: 0.20),
+    hoverColor: AppColors.teal.withValues(alpha: 0.08),
     textTheme: const TextTheme(
       bodyMedium: TextStyle(color: AppColors.ink, fontSize: 15, height: 1.55),
       bodyLarge: TextStyle(color: AppColors.ink, fontSize: 16, height: 1.55),
@@ -87,3 +93,9 @@ ThemeData appTheme() {
     ),
   );
 }
+
+/// True when the user prefers reduced motion (on web this mirrors the
+/// browser's prefers-reduced-motion setting). Animations check this and
+/// jump straight to their end state instead of playing.
+bool reduceMotion(BuildContext context) =>
+    MediaQuery.disableAnimationsOf(context);
