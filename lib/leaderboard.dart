@@ -94,7 +94,7 @@ class _LeaderboardSectionState extends State<LeaderboardSection> {
     if (!_configured) {
       setState(
         () => _msg =
-            'The leaderboard is not active yet. Link the Vercel KV store to save scores.',
+            'Could not reach the leaderboard. Try again in a moment.',
       );
       return;
     }
@@ -146,7 +146,7 @@ class _LeaderboardSectionState extends State<LeaderboardSection> {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: const Text(
-                  'Leaderboard not active yet. The board activates once the Vercel KV store is linked to this project. Scores you save now will not be stored until then.',
+                  'Could not reach the leaderboard. Check your connection and tap Refresh board to try again.',
                   style: TextStyle(color: AppColors.noteText, fontSize: 15),
                 ),
               ),
@@ -165,11 +165,7 @@ class _LeaderboardSectionState extends State<LeaderboardSection> {
                 ],
               )
             else if (_entries.isEmpty)
-              Text(
-                _configured
-                    ? 'No scores yet. Be the first to save yours.'
-                    : 'No scores yet. The board activates once the Vercel KV store is linked.',
-              )
+              const Text('No scores yet. Be the first to save yours.')
             else
               Table(
                 columnWidths: const <int, TableColumnWidth>{
