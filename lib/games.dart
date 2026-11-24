@@ -381,6 +381,7 @@ class _ZkScrambleGameState extends State<ZkScrambleGame> {
 
   void _check() {
     final String guess = _controller.text.trim().toUpperCase();
+    if (guess.isEmpty) return;
     if (guess == _order[_idx].word) {
       setState(() {
         _solved += 1;
@@ -401,6 +402,18 @@ class _ZkScrambleGameState extends State<ZkScrambleGame> {
         extentOffset: _controller.text.length,
       );
     }
+  }
+
+  /// Start over with a fresh shuffle of the same word list.
+  void _restart() {
+    setState(() {
+      _order = List<ScrambleWord>.from(scrambleWords)..shuffle(Random());
+      _idx = 0;
+      _solved = 0;
+      _msg = '';
+      _controller.clear();
+      _scrambled = _scramble(_order[_idx].word);
+    });
   }
 
   void _skip() {
@@ -426,6 +439,12 @@ class _ZkScrambleGameState extends State<ZkScrambleGame> {
           const SizedBox(height: 8),
           Text('You earned ${_solved * 60} points from this game.',
               style: const TextStyle(fontWeight: FontWeight.w700)),
+          const SizedBox(height: 16),
+          ElevatedButton(
+            onPressed: _restart,
+            style: AppButtons.navy,
+            child: const Text('Play again'),
+          ),
         ],
       );
     }
@@ -475,6 +494,14 @@ class _ZkScrambleGameState extends State<ZkScrambleGame> {
                   border: OutlineInputBorder(),
                 ),
                 textCapitalization: TextCapitalization.characters,
+                // One clear step: the moment the typed word is complete
+                // it checks itself and moves on, no extra tap needed.
+                // The Check button stays for an explicit check.
+                onChanged: (String value) {
+                  if (value.trim().toUpperCase() == _order[_idx].word) {
+                    _check();
+                  }
+                },
                 onSubmitted: (_) => _check(),
               ),
             ),
@@ -527,6 +554,11 @@ class _ZkScrambleGameState extends State<ZkScrambleGame> {
         ],
         const SizedBox(height: 14),
         Text(_msg, style: const TextStyle(fontWeight: FontWeight.w700)),
+        const SizedBox(height: 6),
+        const Text(
+          'Type the full word and it checks itself.',
+          style: TextStyle(color: AppColors.muted, fontSize: 13),
+        ),
       ],
     );
   }

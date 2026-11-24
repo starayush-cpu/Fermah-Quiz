@@ -8,7 +8,7 @@ sponsored by Fermah.
 
 - 6 quizzes, 45 questions with explainers (Fermah Basics, ZK Zero to Hero,
   Proof Systems Arena, Kernel and ULTRAMINT, True or False Blitz,
-  Fermafia Community). Each question has a 20 second timer, streaks and
+  Fermafia Community). Each question has a 30 second timer, streaks and
   a time bonus.
 - 4 mini games: Proof Pairs, Proof Rush, ZK Scramble, Fermah Says.
 - Shared leaderboard, saved permanently in the project database.
@@ -25,9 +25,9 @@ Fermah token or airdrop.
 
 The leaderboard lives in `api/leaderboard.js`, a Vercel serverless function
 that stores scores in a Vercel KV store (Upstash Redis) through its REST
-API. The board is shared by every visitor and stays saved permanently
-once KV is linked. Until the KV store is linked, the board shows a
-"not active yet" note and scores are not stored.
+API. The board is live: scores are saved to the shared leaderboard and
+stay saved permanently. On a local run the board shows a "not active yet"
+note, which is expected, because the KV store is only linked on Vercel.
 
 ## Deploy on Vercel
 

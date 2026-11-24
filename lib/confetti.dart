@@ -4,10 +4,12 @@ import 'package:flutter/material.dart';
 
 import 'theme.dart';
 
-/// A short, one-shot confetti burst for quiz completion. Particles are
-/// drawn with a CustomPainter and move with transform and opacity only.
-/// It plays once, lasts about 1.8 seconds, never blocks taps, and renders
-/// nothing at all when the user prefers reduced motion.
+/// A short, one-shot confetti burst for the quiz results screen. It
+/// fires whenever a quiz ends with a score, whether the player finished
+/// every question or quit early. Particles are drawn with a CustomPainter
+/// and move with transform and opacity only. It plays once, lasts about
+/// 2.4 seconds, never blocks taps, and renders nothing at all when the
+/// user prefers reduced motion.
 class ConfettiBurst extends StatefulWidget {
   const ConfettiBurst({super.key});
 
@@ -31,7 +33,7 @@ class _ConfettiBurstState extends State<ConfettiBurst>
       AppColors.gold,
       AppColors.navy2,
     ];
-    _particles = List<_Particle>.generate(64, (_) {
+    _particles = List<_Particle>.generate(90, (_) {
       final double angle = rnd.nextDouble() * math.pi * 2;
       final double speed = 120 + rnd.nextDouble() * 260;
       return _Particle(
@@ -46,7 +48,7 @@ class _ConfettiBurstState extends State<ConfettiBurst>
     });
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1800),
+      duration: const Duration(milliseconds: 2400),
     )..forward();
   }
 

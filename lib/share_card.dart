@@ -203,28 +203,21 @@ class _ShareCardSectionState extends State<ShareCardSection> {
             ),
           ],
         );
-        return Card(
-          elevation: 0,
-          color: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-            side: const BorderSide(color: AppColors.line),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: wide
-                ? Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(child: form),
-                      const SizedBox(width: 24),
-                      Expanded(child: preview),
-                    ],
-                  )
-                : Column(
-                    children: [form, const SizedBox(height: 24), preview],
-                  ),
-          ),
+        return ProCard(
+          edge: AppColors.tealEdge,
+          padding: const EdgeInsets.all(24),
+          child: wide
+              ? Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(child: form),
+                    const SizedBox(width: 24),
+                    Expanded(child: preview),
+                  ],
+                )
+              : Column(
+                  children: [form, const SizedBox(height: 24), preview],
+                ),
         );
       },
     );

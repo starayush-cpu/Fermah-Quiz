@@ -22,7 +22,7 @@ void main() {
     // The score chip must show points above zero now.
     expect(find.text('0 pts Seeker'), findsNothing);
     // The chip shows "<total> pts <rank>"; the total depends on how much
-    // of the 20 second timer was left when the answer was tapped.
+    // of the 30 second timer was left when the answer was tapped.
     expect(find.textContaining(RegExp(r'^[1-9][0-9]* pts')), findsWidgets);
   });
 }

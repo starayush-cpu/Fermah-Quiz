@@ -8,8 +8,11 @@ import 'data.dart';
 import 'rolling_number.dart';
 import 'theme.dart';
 
-/// Quiz player: 20 seconds per question, 100 points plus a time bonus of
+/// Quiz player: 30 seconds per question, 100 points plus a time bonus of
 /// up to 100 more, 10 points per streak step, explainer after each answer.
+/// The timer stops the moment an answer is locked in, and the time bonus
+/// is proportional to the time left, so a correct answer is always worth
+/// 100 plus up to 100, whatever the per-question time is.
 class QuizPlayer extends StatefulWidget {
   const QuizPlayer({
     super.key,
@@ -18,6 +21,7 @@ class QuizPlayer extends StatefulWidget {
     required this.onAddPoints,
     required this.onGoToLeaderboard,
     required this.onGoToShare,
+    required this.onQuizFinished,
   });
 
   final Quiz quiz;
@@ -26,12 +30,16 @@ class QuizPlayer extends StatefulWidget {
   final VoidCallback onGoToLeaderboard;
   final VoidCallback onGoToShare;
 
+  /// Called after a quiz ends (finished or quit) so the home page can
+  /// reload the saved best scores and show the new one on the quiz card.
+  final VoidCallback onQuizFinished;
+
   @override
   State<QuizPlayer> createState() => _QuizPlayerState();
 }
 
 class _QuizPlayerState extends State<QuizPlayer> {
-  static const int _questionSeconds = 20;
+  static const int _questionSeconds = 30;
 
   int _index = 0;
   int _score = 0;
@@ -73,6 +81,8 @@ class _QuizPlayerState extends State<QuizPlayer> {
   void _answer(int choice) {
     if (_answered) return;
     _answered = true;
+    // The timer stops the moment the answer is locked in. Nothing ticks
+    // while the explainer is on screen.
     _timer?.cancel();
     final QuizQuestion item = widget.quiz.questions[_index];
     final int correct = item.answer;
@@ -80,7 +90,9 @@ class _QuizPlayerState extends State<QuizPlayer> {
     if (choice == correct) {
       _streak += 1;
       _correct += 1;
-      gained = 100 + _timeLeft * 5 + (_streak - 1) * 10;
+      gained = 100 +
+          (_timeLeft * 100 ~/ _questionSeconds) +
+          (_streak - 1) * 10;
       _score += gained;
       _lastGained = gained;
       widget.onAddPoints(gained);
@@ -117,6 +129,7 @@ class _QuizPlayerState extends State<QuizPlayer> {
         _finished = true;
       });
     }
+    widget.onQuizFinished();
   }
 
   void _restart() {
@@ -140,77 +153,76 @@ class _QuizPlayerState extends State<QuizPlayer> {
     final QuizQuestion item = widget.quiz.questions[_index];
     final bool low = _timeLeft <= 5;
     const List<String> keys = ['A', 'B', 'C', 'D'];
-    return Card(
-      elevation: 0,
-      color: Colors.white,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: const BorderSide(color: AppColors.line),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              widget.quiz.title,
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
-            ),
-            const SizedBox(height: 10),
-            // Chips reflow onto a second line on narrow screens instead of
-            // clipping, which the old single-line header did at 390px.
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
+    return ProCard(
+      edge: AppColors.tealEdge,
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            widget.quiz.title,
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 10),
+          // Chips reflow onto a second line on narrow screens instead of
+          // clipping, which the old single-line header did at 390px.
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _infoChip(
+                'Question ${_index + 1} of ${widget.quiz.questions.length}',
+                AppColors.navy,
+                const Color(0xFFE2EBF0),
+              ),
+              _infoChip('Score $_score', AppColors.tealDark,
+                  const Color(0xFFE7F4F4)),
+              if (_streak >= 2)
                 _infoChip(
-                  'Question ${_index + 1} of ${widget.quiz.questions.length}',
-                  AppColors.navy,
-                  const Color(0xFFE2EBF0),
+                  'Streak $_streak',
+                  AppColors.purpleDark,
+                  const Color(0xFFF0E6F7),
+                  icon: Icons.whatshot,
                 ),
-                _infoChip('Score $_score', AppColors.tealDark,
-                    const Color(0xFFE7F4F4)),
-                if (_streak >= 2)
-                  _infoChip(
-                    'Streak $_streak',
-                    AppColors.purpleDark,
-                    const Color(0xFFF0E6F7),
-                    icon: Icons.whatshot,
-                  ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(999),
-                    child: LinearProgressIndicator(
-                      value: _timeLeft / _questionSeconds,
-                      minHeight: 10,
-                      backgroundColor: const Color(0xFFE2EBF0),
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        low ? AppColors.bad : AppColors.teal,
-                      ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(999),
+                  child: LinearProgressIndicator(
+                    value: _timeLeft / _questionSeconds,
+                    minHeight: 12,
+                    backgroundColor: const Color(0xFFE2EBF0),
+                    // Once an answer is locked in the timer is stopped,
+                    // so the bar turns grey to show it is frozen.
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      _answered
+                          ? AppColors.muted
+                          : (low ? AppColors.bad : AppColors.teal),
                     ),
                   ),
                 ),
-                const SizedBox(width: 10),
-                SizedBox(
-                  width: 44,
-                  child: Text(
-                    '${_timeLeft}s',
-                    textAlign: TextAlign.right,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w800,
-                      fontFeatures: <FontFeature>[
-                        FontFeature.tabularFigures()
-                      ],
-                    ),
+              ),
+              const SizedBox(width: 10),
+              SizedBox(
+                width: 44,
+                child: Text(
+                  '${_timeLeft}s',
+                  textAlign: TextAlign.right,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    color: _answered ? AppColors.muted : AppColors.ink,
+                    fontFeatures: const <FontFeature>[
+                      FontFeature.tabularFigures()
+                    ],
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
+          ),
             const SizedBox(height: 16),
             Text(
               item.question,
@@ -347,86 +359,80 @@ class _QuizPlayerState extends State<QuizPlayer> {
             ),
           ],
         ),
-      ),
     );
   }
 
   Widget _resultsCard(BuildContext context) {
+    // The results screen celebrates whenever the quiz ends with a
+    // score, whether the player finished every question or quit early.
     final bool celebrate = _score > 0 && !reduceMotion(context);
-    final Widget card = Card(
-      elevation: 0,
-      color: Colors.white,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: const BorderSide(color: AppColors.line),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          children: [
-            Text(
-              '${widget.quiz.title} complete',
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+    final Widget card = ProCard(
+      accent: const <Color>[AppColors.purple, AppColors.teal],
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        children: [
+          Text(
+            '${widget.quiz.title} complete',
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 8),
+          RollingNumber(
+            value: _score,
+            suffix: ' pts',
+            style: const TextStyle(
+              fontSize: 44,
+              fontWeight: FontWeight.w800,
+              color: AppColors.navy,
             ),
-            const SizedBox(height: 8),
-            RollingNumber(
-              value: _score,
-              suffix: ' pts',
+          ),
+          Text(
+            'You answered $_correct of ${widget.quiz.questions.length} correctly.',
+          ),
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              color: AppColors.purple,
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: Text(
+              'Your rank: ${rankTitle(widget.totalScore)}',
               style: const TextStyle(
-                fontSize: 44,
+                color: Colors.white,
                 fontWeight: FontWeight.w800,
-                color: AppColors.navy,
               ),
             ),
-            Text(
-              'You answered $_correct of ${widget.quiz.questions.length} correctly.',
-            ),
-            const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              decoration: BoxDecoration(
-                color: AppColors.purple,
-                borderRadius: BorderRadius.circular(999),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Your total is now ${widget.totalScore} points. Save it on the leaderboard and make your share card below.',
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: AppColors.muted),
+          ),
+          const SizedBox(height: 18),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            alignment: WrapAlignment.center,
+            children: [
+              ElevatedButton(
+                onPressed: widget.onGoToLeaderboard,
+                style: AppButtons.navy,
+                child: const Text('Go to leaderboard'),
               ),
-              child: Text(
-                'Your rank: ${rankTitle(widget.totalScore)}',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w800,
-                ),
+              ElevatedButton(
+                onPressed: widget.onGoToShare,
+                style: AppButtons.purple,
+                child: const Text('Make my share card'),
               ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Your total is now ${widget.totalScore} points. Save it on the leaderboard and make your share card below.',
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: AppColors.muted),
-            ),
-            const SizedBox(height: 18),
-            Wrap(
-              spacing: 10,
-              runSpacing: 10,
-              alignment: WrapAlignment.center,
-              children: [
-                ElevatedButton(
-                  onPressed: widget.onGoToLeaderboard,
-                  style: AppButtons.navy,
-                  child: const Text('Go to leaderboard'),
-                ),
-                ElevatedButton(
-                  onPressed: widget.onGoToShare,
-                  style: AppButtons.purple,
-                  child: const Text('Make my share card'),
-                ),
-                OutlinedButton(
-                  onPressed: _restart,
-                  style: AppButtons.outline,
-                  child: const Text('Play again'),
-                ),
-              ],
-            ),
-          ],
-        ),
+              OutlinedButton(
+                onPressed: _restart,
+                style: AppButtons.outline,
+                child: const Text('Play again'),
+              ),
+            ],
+          ),
+        ],
       ),
     );
     if (!celebrate) return card;

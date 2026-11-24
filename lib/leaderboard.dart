@@ -131,18 +131,11 @@ class _LeaderboardSectionState extends State<LeaderboardSection> {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      elevation: 0,
-      color: Colors.white,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: const BorderSide(color: AppColors.line),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
+    return ProCard(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
             if (!_configured)
               Container(
                 padding: const EdgeInsets.all(14),
@@ -224,6 +217,9 @@ class _LeaderboardSectionState extends State<LeaderboardSection> {
                   ),
                   ...List<TableRow>.generate(_entries.length, (int i) {
                     final BoardEntry e = _entries[i];
+                    final Color? badge = i == 0
+                        ? AppColors.gold
+                        : (i == 1 ? AppColors.silver : (i == 2 ? AppColors.bronze : null));
                     return TableRow(
                       decoration: const BoxDecoration(
                         border: Border(
@@ -233,13 +229,31 @@ class _LeaderboardSectionState extends State<LeaderboardSection> {
                       children: [
                         Padding(
                           padding: const EdgeInsets.symmetric(vertical: 10),
-                          child: Text(
-                            '${i + 1}',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w800,
-                              color: i == 0 ? AppColors.gold : AppColors.ink,
-                            ),
-                          ),
+                          child: badge != null
+                              ? Container(
+                                  width: 28,
+                                  height: 28,
+                                  alignment: Alignment.center,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: badge,
+                                  ),
+                                  child: Text(
+                                    '${i + 1}',
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w800,
+                                      color: Colors.white,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                )
+                              : Text(
+                                  '${i + 1}',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w800,
+                                    color: AppColors.ink,
+                                  ),
+                                ),
                         ),
                         Padding(
                           padding: const EdgeInsets.symmetric(vertical: 10),
@@ -291,7 +305,6 @@ class _LeaderboardSectionState extends State<LeaderboardSection> {
             Text(_msg, style: const TextStyle(fontWeight: FontWeight.w700)),
           ],
         ),
-      ),
     );
   }
 }
