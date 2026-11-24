@@ -588,7 +588,7 @@ class _HomePageState extends State<HomePage> {
         ),
         const SizedBox(height: 12),
         const Text(
-          'Six quizzes, four mini games and one shared leaderboard, all built by a community member for the Fermafia. Learn how zero knowledge proofs, Kernel and ULTRAMINT work, earn points, and share your score card.',
+          'Six quizzes, four mini games and one shared leaderboard, all built by Ayush (@_star_ayush) for the Fermafia. Learn how zero knowledge proofs, Kernel and ULTRAMINT work, earn points, and share your score card.',
           style:
               TextStyle(color: Color(0xFFC7D8E0), fontSize: 17, height: 1.55),
         ),
@@ -999,7 +999,7 @@ class _HomePageState extends State<HomePage> {
                     ),
                     TextSpan(
                       text:
-                          ' is an unofficial community project, made by a community member for the Fermafia. It is not affiliated with, endorsed by, or sponsored by Fermah.',
+                          ' is an unofficial community project, made by Ayush (@_star_ayush) for the Fermafia. It is not affiliated with, endorsed by, or sponsored by Fermah.',
                     ),
                   ],
                 ),
